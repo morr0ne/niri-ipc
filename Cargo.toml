@@ -7,6 +7,11 @@ authors = ["Matilde Morrone <contact@morrone.dev>"]
 readme = "README.md"
 repository = "https://github.com/morr0ne/niri-pip"
 
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
 [dependencies]
 anyhow = "1.0.98"
 niri-ipc = "25.5.1"
