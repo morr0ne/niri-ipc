@@ -1,11 +1,11 @@
 [package]
-name = "niri-pip"
+name = "piri"
 version = "0.1.0"
 edition = "2024"
 license = "EUPL-1.2"
 authors = ["Matilde Morrone <contact@morrone.dev>"]
 readme = "README.md"
-repository = "https://github.com/morr0ne/niri-pip"
+repository = "https://github.com/morr0ne/piri"
 
 [profile.release]
 lto = true
