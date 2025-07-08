@@ -1,8 +1,16 @@
+use std::cell::LazyCell;
+
 use anyhow::Result;
 use niri_ipc::socket::Socket;
-use niri_ipc::{Action, Event, Request, Response, WorkspaceReferenceArg};
+use niri_ipc::{Action, Event, Request, Response, Window, WorkspaceReferenceArg};
 use regex::Regex;
-use tracing::{debug, info};
+use tracing::info;
+
+const TITLE_REGEX: LazyCell<Regex> =
+    LazyCell::new(|| Regex::new(r"^Picture-in-Picture$").expect("Invalid regex"));
+
+const APP_ID_REGEX: LazyCell<Regex> =
+    LazyCell::new(|| Regex::new(r"^Picture-in-Picture$").expect("Invalid regex"));
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
@@ -12,9 +20,6 @@ fn main() -> Result<()> {
 
     let mut pip_window = None;
 
-    let title_regex = Regex::new(r"^Picture-in-Picture$")?;
-    let app_id_regex = Regex::new(r"firefox$")?;
-
     if matches!(
         events_socket.send(Request::EventStream)?,
         Ok(Response::Handled)
@@ -22,16 +27,7 @@ fn main() -> Result<()> {
         info!("Trying to fetch existing windows...");
         if let Ok(Response::Windows(windows)) = requests_socket.send(Request::Windows)? {
             for window in windows {
-                let app_id_matches = if let Some(app_id) = window.app_id {
-                    app_id_regex.is_match(&app_id)
-                } else {
-                    true
-                };
-
-                if let Some(ref title) = window.title
-                    && title_regex.is_match(title)
-                    && app_id_matches
-                {
+                if window_matches(&window) {
                     info!("Found a matching window with id {}", window.id);
                     pip_window = Some(window.id);
                 }
@@ -63,9 +59,7 @@ fn main() -> Result<()> {
                     }
                 }
                 Event::WindowOpenedOrChanged { ref window } => {
-                    if let Some(ref title) = window.title
-                        && title_regex.is_match(title)
-                    {
+                    if window_matches(window) {
                         info!("Window {} matched regexs", window.id);
                         pip_window = Some(window.id);
                     }
@@ -85,4 +79,18 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn window_matches(window: &Window) -> bool {
+    let app_id_matches = if let Some(ref app_id) = window.app_id {
+        APP_ID_REGEX.is_match(app_id)
+    } else {
+        true
+    };
+
+    if let Some(ref title) = window.title {
+        return TITLE_REGEX.is_match(title) && app_id_matches;
+    }
+
+    false
 }
