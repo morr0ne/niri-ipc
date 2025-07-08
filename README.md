@@ -1,4 +1,4 @@
-# niri-ipc
+# niri-pip
 
 A simple program to make the firefox pip persist across workspaces while niri works on adding pinning support
 
