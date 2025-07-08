@@ -1,10 +1,13 @@
 use std::cell::LazyCell;
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use niri_ipc::socket::Socket;
 use niri_ipc::{Action, Event, Request, Response, Window, WorkspaceReferenceArg};
 use regex::Regex;
+use sap::ParsingError;
+use sap::{Argument, Parser};
 use tracing::info;
+use tracing_subscriber::filter::LevelFilter;
 
 const TITLE_REGEX: LazyCell<Regex> =
     LazyCell::new(|| Regex::new(r"^Picture-in-Picture$").expect("Invalid regex"));
@@ -12,8 +15,59 @@ const TITLE_REGEX: LazyCell<Regex> =
 const APP_ID_REGEX: LazyCell<Regex> =
     LazyCell::new(|| Regex::new(r"firefox$").expect("Invalid regex"));
 
+const VERSION_TEXT: &str = "piri 0.1.0\n";
+
+const HELP_TEXT: &str = "piri - Make Firefox Picture-in-Picture windows persist across workspaces
+
+USAGE:
+    piri [OPTIONS]
+
+OPTIONS:
+    -l, --log-level <LEVEL>    Set the log level [default: info]
+                               Possible values: trace, debug, info, warn, error
+    -h, --help                 Print this help message
+    -v, --version              Print version information
+";
+
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+    let mut parser = Parser::from_arbitrary(std::env::args())?;
+    let mut level_filter = LevelFilter::INFO;
+
+    while let Some(arg) = parser.forward()? {
+        match arg {
+            Argument::Short('l') | Argument::Long("log-level") => {
+                if let Some(level) = parser.value() {
+                    level_filter = match level.as_str() {
+                        "trace" => LevelFilter::TRACE,
+                        "debug" => LevelFilter::DEBUG,
+                        "info" => LevelFilter::INFO,
+                        "warn" => LevelFilter::WARN,
+                        "error" => LevelFilter::ERROR,
+                        _ => {
+                            bail!("Invalid log level: {level}.");
+                        }
+                    };
+
+                    continue;
+                }
+
+                bail!("A value must be provided for log-level");
+            }
+            Argument::Short('h') | Argument::Long("help") => {
+                print!("{HELP_TEXT}");
+                return Ok(());
+            }
+            Argument::Short('v') | Argument::Long("version") => {
+                print!("{VERSION_TEXT}");
+                return Ok(());
+            }
+            arg => return Err(arg.into_error(None).into()),
+        }
+    }
+
+    tracing_subscriber::fmt()
+        .with_max_level(level_filter)
+        .init();
 
     let mut events_socket = Socket::connect()?;
     let mut requests_socket = Socket::connect()?;
