@@ -42,10 +42,7 @@ fn main() -> Result<()> {
             match event {
                 Event::WorkspaceActivated { id, focused } => {
                     if focused && let Some(window) = pip_window {
-                        info!(
-                            "Workspace {} focused. Moving window {} there...",
-                            id, window
-                        );
+                        info!("Workspace {} focused. Moving window {}", id, window);
 
                         let _ = requests_socket.send(Request::Action(
                             Action::MoveWindowToWorkspace {
@@ -59,7 +56,7 @@ fn main() -> Result<()> {
                     }
                 }
                 Event::WindowOpenedOrChanged { ref window } => {
-                    if window_matches(window) {
+                    if window_matches(window) && pip_window != Some(window.id) {
                         info!("Window {} matched regexs", window.id);
                         pip_window = Some(window.id);
                     }
@@ -89,7 +86,7 @@ fn window_matches(window: &Window) -> bool {
     };
 
     if let Some(ref title) = window.title {
-        return TITLE_REGEX.is_match(title) && app_id_matches;
+        return TITLE_REGEX.is_match(title);
     }
 
     false
