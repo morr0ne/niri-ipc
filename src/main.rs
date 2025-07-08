@@ -10,7 +10,7 @@ const TITLE_REGEX: LazyCell<Regex> =
     LazyCell::new(|| Regex::new(r"^Picture-in-Picture$").expect("Invalid regex"));
 
 const APP_ID_REGEX: LazyCell<Regex> =
-    LazyCell::new(|| Regex::new(r"^Picture-in-Picture$").expect("Invalid regex"));
+    LazyCell::new(|| Regex::new(r"firefox$").expect("Invalid regex"));
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
@@ -86,7 +86,7 @@ fn window_matches(window: &Window) -> bool {
     };
 
     if let Some(ref title) = window.title {
-        return TITLE_REGEX.is_match(title);
+        return TITLE_REGEX.is_match(title) && app_id_matches;
     }
 
     false
